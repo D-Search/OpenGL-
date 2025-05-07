@@ -86,12 +86,6 @@ void display() {
 		glColor3f(0.0, 0.0, 1.0);
 		drawCube();
         break;
-	case 4:
-		// 对称后的立方体 (青色)
-        glScalef(1.0, -1.0, 1.0); // 关于xz平面对称
-        glColor3f(0.0, 1.0, 1.0);
-		drawCube();
-		break;
 	default:
 		std::cout << "无效的操作选择！" << std::endl;
 		break;
@@ -111,7 +105,7 @@ void reshape(int w, int h) {
 }
 
 int main(int argc, char** argv) {
-    printf("请输入要执行的操作：1—平移；2—旋转；3—缩放；4—对称。\n");
+    printf("请输入要执行的操作：1—平移；2—旋转；3—缩放。\n");
 	std::cin>>choice;
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
