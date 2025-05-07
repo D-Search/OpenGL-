@@ -1,0 +1,128 @@
+#include <GL/glut.h>
+#include <math.h>
+#include<iostream>
+
+int choice=0;
+
+// 初始化函数
+void init() {
+    glClearColor(0.0, 0.0, 0.0, 1.0); // 黑色背景
+    glEnable(GL_DEPTH_TEST); // 启用深度测试
+}
+
+// 绘制一个彩色立方体作为示例对象
+void drawCube() {
+    glBegin(GL_QUADS);
+    // 前面 (红色)
+    glColor3f(1.0, 0.0, 0.0);
+    glVertex3f(-0.5, -0.5, 0.5);
+    glVertex3f(0.5, -0.5, 0.5);
+    glVertex3f(0.5, 0.5, 0.5);
+    glVertex3f(-0.5, 0.5, 0.5);
+
+    // 后面 (绿色)
+    glColor3f(0.0, 1.0, 0.0);
+    glVertex3f(-0.5, -0.5, -0.5);
+    glVertex3f(0.5, -0.5, -0.5);
+    glVertex3f(0.5, 0.5, -0.5);
+    glVertex3f(-0.5, 0.5, -0.5);
+
+    // 左面 (蓝色)
+    glColor3f(0.0, 0.0, 1.0);
+    glVertex3f(-0.5, -0.5, 0.5);
+    glVertex3f(-0.5, -0.5, -0.5);
+    glVertex3f(-0.5, 0.5, -0.5);
+    glVertex3f(-0.5, 0.5, 0.5);
+
+    // 右面 (黄色)
+    glColor3f(1.0, 1.0, 0.0);
+    glVertex3f(0.5, -0.5, 0.5);
+    glVertex3f(0.5, -0.5, -0.5);
+    glVertex3f(0.5, 0.5, -0.5);
+    glVertex3f(0.5, 0.5, 0.5);
+
+    // 上面 (青色)
+    glColor3f(0.0, 1.0, 1.0);
+    glVertex3f(-0.5, 0.5, 0.5);
+    glVertex3f(0.5, 0.5, 0.5);
+    glVertex3f(0.5, 0.5, -0.5);
+    glVertex3f(-0.5, 0.5, -0.5);
+
+    // 下面 (洋红色)
+    glColor3f(1.0, 0.0, 1.0);
+    glVertex3f(-0.5, -0.5, 0.5);
+    glVertex3f(0.5, -0.5, 0.5);
+    glVertex3f(0.5, -0.5, -0.5);
+    glVertex3f(-0.5, -0.5, -0.5);
+    glEnd();
+}
+
+void display() {
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glLoadIdentity();
+
+    gluLookAt(3.0, 3.0, 3.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
+    // 原始立方体 (白色)
+    glColor3f(1.0, 1.0, 1.0);
+    drawCube();
+	// 根据用户选择的操作进行变换
+    glPushMatrix();
+    switch (choice) {
+    case 1:
+        // 平移后的立方体 (红色)
+        glTranslatef(1.5, 0.0, 0.0);
+        glColor3f(1.0, 0.0, 0.0);
+        drawCube();
+        break;
+	case 2:
+        // 旋转后的立方体 (绿色)
+        glRotatef(45.0, 0.0, 1.0, 0.0);
+        glColor3f(0.0, 1.0, 0.0);
+        drawCube();
+		break;
+    case 3:
+		// 缩放后的立方体 (蓝色)
+		glScalef(1.0, 2.0, 1.0);
+		glColor3f(0.0, 0.0, 1.0);
+		drawCube();
+        break;
+	case 4:
+		// 对称后的立方体 (青色)
+        glScalef(1.0, -1.0, 1.0); // 关于xz平面对称
+        glColor3f(0.0, 1.0, 1.0);
+		drawCube();
+		break;
+	default:
+		std::cout << "无效的操作选择！" << std::endl;
+		break;
+
+    }
+    glPopMatrix();
+    glutSwapBuffers();
+}
+
+// 窗口大小调整回调函数
+void reshape(int w, int h) {
+    glViewport(0, 0, w, h);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    gluPerspective(45.0, (float)w / (float)h, 1.0, 100.0);
+    glMatrixMode(GL_MODELVIEW);
+}
+
+int main(int argc, char** argv) {
+    printf("请输入要执行的操作：1—平移；2—旋转；3—缩放；4—对称。\n");
+	std::cin>>choice;
+    glutInit(&argc, argv);
+    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
+    glutInitWindowSize(800, 600);
+    glutCreateWindow("");
+
+    init();
+
+    glutDisplayFunc(display);
+    glutReshapeFunc(reshape);
+
+    glutMainLoop();
+    return 0;
+}
