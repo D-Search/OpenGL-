@@ -1,0 +1,148 @@
+#include <GL/glut.h>
+#include <cmath>
+
+// 绘制金字塔
+void drawPyramid() {
+    // 金字塔底面（正方形）
+    glBegin(GL_QUADS);
+    glColor3f(0.0f, 1.0f, 0.0f); // 绿色底面
+    glVertex3f(-1.0f, -1.0f, -1.0f);
+    glVertex3f(1.0f, -1.0f, -1.0f);
+    glVertex3f(1.0f, -1.0f, 1.0f);
+    glVertex3f(-1.0f, -1.0f, 1.0f);
+    glEnd();
+
+    // 金字塔侧面（四个三角形）
+    glBegin(GL_TRIANGLES);
+    // 前面
+    glColor3f(1.0f, 0.0f, 0.0f); // 红色
+    glVertex3f(0.0f, 1.0f, 0.0f);  // 顶点
+    glVertex3f(-1.0f, -1.0f, 1.0f);
+    glVertex3f(1.0f, -1.0f, 1.0f);
+
+    // 右面
+    glColor3f(0.0f, 0.0f, 1.0f); // 蓝色
+    glVertex3f(0.0f, 1.0f, 0.0f);
+    glVertex3f(1.0f, -1.0f, 1.0f);
+    glVertex3f(1.0f, -1.0f, -1.0f);
+
+    // 后面
+    glColor3f(1.0f, 1.0f, 0.0f); // 黄色
+    glVertex3f(0.0f, 1.0f, 0.0f);
+    glVertex3f(1.0f, -1.0f, -1.0f);
+    glVertex3f(-1.0f, -1.0f, -1.0f);
+
+    // 左面
+    glColor3f(1.0f, 0.0f, 1.0f); // 紫色
+    glVertex3f(0.0f, 1.0f, 0.0f);
+    glVertex3f(-1.0f, -1.0f, -1.0f);
+    glVertex3f(-1.0f, -1.0f, 1.0f);
+    glEnd();
+}
+
+// 绘制坐标系
+void drawCoordinateSystem() {
+    glLineWidth(2.0); // 设置线宽
+
+    // 绘制坐标轴线
+    glBegin(GL_LINES);
+
+    // X轴 - 红色
+    glColor3f(1.0, 0.0, 0.0);
+    glVertex3f(0.0, 0.0, 0.0);
+    glVertex3f(5.0, 0.0, 0.0);
+
+    // Y轴 - 绿色
+    glColor3f(0.0, 1.0, 0.0);
+    glVertex3f(0.0, 0.0, 0.0);
+    glVertex3f(0.0, 5.0, 0.0);
+
+    // Z轴 - 蓝色
+    glColor3f(0.0, 0.0, 1.0);
+    glVertex3f(0.0, 0.0, 0.0);
+    glVertex3f(0.0, 0.0, 5.0);
+    glEnd();
+}
+
+// 初始化OpenGL
+void init() {
+    glClearColor(0.0, 0.0, 0.0, 1.0);
+    glEnable(GL_DEPTH_TEST);
+}
+
+// 显示回调函数
+void display() {
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    // 分割视口为4个区域
+    int viewportWidth = glutGet(GLUT_WINDOW_WIDTH) / 2;
+    int viewportHeight = glutGet(GLUT_WINDOW_HEIGHT) / 2;
+
+    // --- 原始图形和坐标系 ---
+    glViewport(0, viewportHeight, viewportWidth, viewportHeight);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    gluPerspective(45.0, (GLfloat)viewportWidth / (GLfloat)viewportHeight, 0.1, 100.0);
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    gluLookAt(3.0, 3.0, 3.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
+    drawPyramid();
+    drawCoordinateSystem();
+
+    // --- 一点透视 ---
+    glViewport(viewportWidth, viewportHeight, viewportWidth, viewportHeight);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    gluPerspective(45.0, (GLfloat)viewportWidth / (GLfloat)viewportHeight, 0.1, 100.0);
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    gluLookAt(0.0, 0.0, 5.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0); // 沿Z轴观察
+    glColor3f(1.0, 0.0, 0.0); // 红色
+    drawPyramid();
+    drawCoordinateSystem();
+
+    // --- 二点透视 ---
+    glViewport(0, 0, viewportWidth, viewportHeight);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    gluPerspective(45.0, (GLfloat)viewportWidth / (GLfloat)viewportHeight, 0.1, 100.0);
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    gluLookAt(3.0, 0.0, 3.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0); // X和Z方向观察
+    glColor3f(0.0, 1.0, 0.0); // 绿色
+    drawPyramid();
+    drawCoordinateSystem();
+
+    // --- 三点透视 ---
+    glViewport(viewportWidth, 0, viewportWidth, viewportHeight);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    gluPerspective(45.0, (GLfloat)viewportWidth / (GLfloat)viewportHeight, 0.1, 100.0);
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    gluLookAt(3.0, 3.0, 3.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0); // X,Y,Z方向观察
+    glColor3f(0.0, 0.0, 1.0); // 蓝色
+    drawPyramid();
+    drawCoordinateSystem();
+
+    glutSwapBuffers();
+}
+
+// 窗口大小调整回调
+void reshape(int w, int h) {
+    glutPostRedisplay();
+}
+
+int main(int argc, char** argv) {
+    glutInit(&argc, argv);
+    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
+    glutInitWindowSize(800, 600);
+    glutCreateWindow("金字塔透视投影演示");
+
+    init();
+    glutDisplayFunc(display);
+    glutReshapeFunc(reshape);
+
+    glutMainLoop();
+    return 0;
+}
