@@ -1,0 +1,154 @@
+#include <GL/glut.h>
+#include <stdio.h>
+
+// 旋转角度
+float rotateX = 0.0f;
+float rotateY = 0.0f;
+
+// 鼠标状态
+int lastX, lastY;
+bool mouseLeftDown = false;
+bool mouseRightDown = false;
+
+// 缩放因子
+float scale = 1.0f;
+
+// 初始化函数
+void init() {
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f); // 黑色背景
+    glEnable(GL_DEPTH_TEST); // 启用深度测试
+    glEnable(GL_LIGHTING);   // 启用光照
+    glEnable(GL_LIGHT0);     // 启用光源0
+
+    // 设置光源
+    GLfloat lightPos[4] = { 5.0f, 5.0f, 5.0f, 1.0f };
+    GLfloat lightColor[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
+    GLfloat ambient[4] = { 0.2f, 0.2f, 0.2f, 1.0f };
+
+    glLightfv(GL_LIGHT0, GL_POSITION, lightPos);
+    glLightfv(GL_LIGHT0, GL_DIFFUSE, lightColor);
+    glLightfv(GL_LIGHT0, GL_AMBIENT, ambient);
+
+    // 设置材质
+    GLfloat matDiffuse[4] = { 0.7f, 0.7f, 0.7f, 1.0f };
+    GLfloat matSpecular[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
+    GLfloat matShininess = 50.0f;
+
+    glMaterialfv(GL_FRONT, GL_DIFFUSE, matDiffuse);
+    glMaterialfv(GL_FRONT, GL_SPECULAR, matSpecular);
+    glMaterialf(GL_FRONT, GL_SHININESS, matShininess);
+}
+
+// 显示回调函数
+void display() {
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    gluLookAt(0.0f, 0.0f, 5.0f,  // 相机位置
+        0.0f, 0.0f, 0.0f,   // 观察点
+        0.0f, 1.0f, 0.0f);  // 上向量
+
+    // 应用旋转和缩放
+    glScalef(scale, scale, scale);
+    glRotatef(rotateX, 1.0f, 0.0f, 0.0f);
+    glRotatef(rotateY, 0.0f, 1.0f, 0.0f);
+
+    // 绘制茶壶
+    glutSolidTeapot(1.0);
+
+    glutSwapBuffers();
+}
+
+// 键盘回调函数
+void keyboard(unsigned char key, int x, int y) {
+    switch (key) {
+    case 'x': rotateX += 5.0f; break;
+    case 'X': rotateX -= 5.0f; break;
+    case 'y': rotateY += 5.0f; break;
+    case 'Y': rotateY -= 5.0f; break;
+    case '+': scale *= 1.1f; break;  // 放大
+    case '-': scale /= 1.1f; break;  // 缩小
+    case 'r': // 重置
+        rotateX = rotateY = 0.0f;
+        scale = 1.0f;
+        break;
+    case 27: exit(0); // ESC键退出
+    }
+    glutPostRedisplay();
+}
+
+// 鼠标按下回调函数
+void mouse(int button, int state, int x, int y) {
+    if (button == GLUT_LEFT_BUTTON) {
+        if (state == GLUT_DOWN) {
+            mouseLeftDown = true;
+            lastX = x;
+            lastY = y;
+        }
+        else if (state == GLUT_UP) {
+            mouseLeftDown = false;
+        }
+    }
+    else if (button == GLUT_RIGHT_BUTTON) {
+        if (state == GLUT_DOWN) {
+            mouseRightDown = true;
+            lastX = x;
+            lastY = y;
+        }
+        else if (state == GLUT_UP) {
+            mouseRightDown = false;
+        }
+    }
+}
+
+// 鼠标移动回调函数
+void motion(int x, int y) {
+    if (mouseLeftDown) {
+        rotateY += (x - lastX) * 0.5f;
+        rotateX += (y - lastY) * 0.5f;
+    }
+    if (mouseRightDown) {
+        scale += (y - lastY) * 0.01f;
+        if (scale < 0.1f) scale = 0.1f;
+    }
+
+    lastX = x;
+    lastY = y;
+    glutPostRedisplay();
+}
+
+// 窗口大小调整回调
+void reshape(int w, int h) {
+    glViewport(0, 0, w, h);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    gluPerspective(45.0f, (float)w / (float)h, 0.1f, 100.0f);
+}
+
+int main(int argc, char** argv) {
+    glutInit(&argc, argv);
+    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
+    glutInitWindowSize(800, 600);
+    glutCreateWindow("可交互的GLUT茶壶");
+
+    init();
+    glutDisplayFunc(display);
+    glutReshapeFunc(reshape);
+    glutKeyboardFunc(keyboard);
+    glutMouseFunc(mouse);
+    glutMotionFunc(motion);
+
+    // 显示操作说明
+    printf("操作说明:\n");
+    printf("1. 鼠标左键拖动 - 旋转茶壶\n");
+    printf("2. 鼠标右键拖动 - 缩放茶壶\n");
+    printf("3. X/x键 - 绕X轴旋转\n");
+    printf("4. Y/y键 - 绕Y轴旋转\n");
+    printf("5. +/-键 - 放大/缩小\n");
+    printf("6. R键 - 重置视图\n");
+    printf("7. ESC键 - 退出程序\n");
+
+    glutMainLoop();
+    return 0;
+}
