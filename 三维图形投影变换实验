@@ -1,0 +1,174 @@
+#include <GL/glut.h>
+#include <cmath>
+#include <iostream>
+
+// 自定义图形顶点数据（一个简单的L形棱柱）
+GLfloat vertices[][3] = {
+    {0.0, 0.0, 0.0}, {2.0, 0.0, 0.0}, {2.0, 1.0, 0.0}, {1.0, 1.0, 0.0}, {1.0, 2.0, 0.0}, {0.0, 2.0, 0.0},
+    {0.0, 0.0, 1.0}, {2.0, 0.0, 1.0}, {2.0, 1.0, 1.0}, {1.0, 1.0, 1.0}, {1.0, 2.0, 1.0}, {0.0, 2.0, 1.0}
+};
+
+// 面索引
+GLint faces[][4] = {
+    {0, 1, 2, 3}, {3, 4, 5, 0},  // 前面两个面
+    {6, 7, 8, 9}, {9, 10, 11, 6}, // 后面两个面
+    {0, 6, 11, 5}, {5, 4, 10, 11}, // 左侧面
+    {1, 7, 8, 2}, {2, 3, 9, 8},   // 右侧面
+    {0, 1, 7, 6}, {4, 5, 11, 10}   // 底面和顶面
+};
+
+// 绘制自定义图形
+void drawCustomShape() {
+    glBegin(GL_QUADS);
+    for (int i = 0; i < 10; i++) {
+        // 为每个面设置不同颜色
+        glColor3f(i * 0.1, 1.0 - i * 0.1, 0.5);
+        for (int j = 0; j < 4; j++) {
+            glVertex3fv(vertices[faces[i][j]]);
+        }
+    }
+    glEnd();
+}
+
+// 绘制坐标系
+void drawCoordinateSystem() {
+    glLineWidth(2.0);
+    glBegin(GL_LINES);
+    // X轴 - 红色
+    glColor3f(1.0, 0.0, 0.0);
+    glVertex3f(0.0, 0.0, 0.0);
+    glVertex3f(3.0, 0.0, 0.0);
+    // Y轴 - 绿色
+    glColor3f(0.0, 1.0, 0.0);
+    glVertex3f(0.0, 0.0, 0.0);
+    glVertex3f(0.0, 3.0, 0.0);
+    // Z轴 - 蓝色
+    glColor3f(0.0, 0.0, 1.0);
+    glVertex3f(0.0, 0.0, 0.0);
+    glVertex3f(0.0, 0.0, 3.0);
+    glEnd();
+}
+
+// 初始化函数
+void init() {
+    glClearColor(0.0, 0.0, 0.0, 1.0);
+    glEnable(GL_DEPTH_TEST);
+}
+
+// 显示回调函数
+void display() {
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    // 分割视口为4个区域
+    int viewportWidth = glutGet(GLUT_WINDOW_WIDTH) / 2;
+    int viewportHeight = glutGet(GLUT_WINDOW_HEIGHT) / 2;
+
+    // --- 主视图（Front View）---
+    glViewport(0, viewportHeight, viewportWidth, viewportHeight);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glOrtho(-3.0, 3.0, -3.0, 3.0, -10.0, 10.0);
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    gluLookAt(0.0, 0.0, 5.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
+    drawCustomShape();
+    drawCoordinateSystem();
+
+    // --- 俯视图（Top View）---
+    glViewport(viewportWidth, viewportHeight, viewportWidth, viewportHeight);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glOrtho(-3.0, 3.0, -3.0, 3.0, -10.0, 10.0);
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    gluLookAt(0.0, 5.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -1.0);
+    drawCustomShape();
+    drawCoordinateSystem();
+
+    // --- 侧视图（Side View）---
+    glViewport(0, 0, viewportWidth, viewportHeight);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glOrtho(-3.0, 3.0, -3.0, 3.0, -10.0, 10.0);
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    gluLookAt(5.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
+    drawCustomShape();
+    drawCoordinateSystem();
+
+    // --- 轴测视图 ---
+    glViewport(viewportWidth, 0, viewportWidth, viewportHeight);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+
+    // 选择正等轴测或斜二测
+    static bool isometric = true;
+    if (isometric) {
+        // 正等轴测投影
+        glOrtho(-3.0, 3.0, -3.0, 3.0, -10.0, 10.0);
+        glMatrixMode(GL_MODELVIEW);
+        glLoadIdentity();
+        // 正等轴测变换矩阵：绕Y轴旋转45度，再绕X轴旋转35.26度
+        glRotatef(35.26f, 1.0f, 0.0f, 0.0f);
+        glRotatef(45.0f, 0.0f, 1.0f, 0.0f);
+    }
+    else {
+        // 斜二测投影
+        glOrtho(-3.0, 3.0, -3.0, 3.0, -10.0, 10.0);
+        glMatrixMode(GL_MODELVIEW);
+        glLoadIdentity();
+        // 斜二测变换矩阵：保持Y轴不变，X和Z轴倾斜
+        GLfloat shear[] = {
+            1.0f, 0.0f, 0.0f, 0.0f,
+            0.0f, 1.0f, 0.0f, 0.0f,
+            0.5f, 0.0f, 1.0f, 0.0f,
+            0.0f, 0.0f, 0.0f, 1.0f
+        };
+        glMultMatrixf(shear);
+    }
+
+    drawCustomShape();
+    drawCoordinateSystem();
+
+    glutSwapBuffers();
+}
+
+// 键盘回调函数
+void keyboard(unsigned char key, int x, int y) {
+    static bool isometric = true;
+
+    if (key == ' ') {
+        isometric = !isometric; // 空格键切换轴测类型
+        glutPostRedisplay();
+    }
+    else if (key == 27) {
+        exit(0); // ESC键退出
+    }
+}
+
+// 窗口大小调整回调
+void reshape(int w, int h) {
+    glutPostRedisplay();
+}
+
+int main(int argc, char** argv) {
+    glutInit(&argc, argv);
+    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
+    glutInitWindowSize(800, 600);
+    glutCreateWindow("三视图与轴测视图实验");
+
+    init();
+    glutDisplayFunc(display);
+    glutReshapeFunc(reshape);
+    glutKeyboardFunc(keyboard);
+
+    std::cout << "实验说明:" << std::endl;
+    std::cout << "1. 左上: 主视图 (Front View)" << std::endl;
+    std::cout << "2. 右上: 俯视图 (Top View)" << std::endl;
+    std::cout << "3. 左下: 侧视图 (Side View)" << std::endl;
+    std::cout << "4. 右下: 轴测视图 (按空格键切换正等轴测/斜二测)" << std::endl;
+    std::cout << "ESC: 退出程序" << std::endl;
+
+    glutMainLoop();
+    return 0;
+}
