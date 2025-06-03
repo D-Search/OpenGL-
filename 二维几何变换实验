@@ -1,0 +1,264 @@
+#include <GL/glut.h>
+#include <iostream>
+#include <cmath>
+#include <cctype>
+#include <string>
+#include <thread> 
+
+// 窗口尺寸
+const int WIDTH = 800;
+const int HEIGHT = 600;
+
+// 变换类型枚举
+enum TransformType {
+    ORIGINAL,
+    ROTATION,
+    SCALING,
+    TRANSLATION,
+    REFLECTION,
+    SHEARING,
+    EXIT
+};
+
+// 全局变量
+TransformType currentTransform = ORIGINAL;
+float rotationAngle = 0.0f;
+float scalingFactor = 1.0f;
+float translationX = 0.0f;
+float translationY = 0.0f;
+float shearingFactor = 0.5f;
+bool transformApplied = false;
+
+// 绘制原始三角形
+void drawTriangle() {
+    glBegin(GL_TRIANGLES);
+    glColor3f(1.0f, 0.0f, 0.0f);   // 红色
+    glVertex2f(0.0f, 0.2f);
+    glColor3f(0.0f, 1.0f, 0.0f);   // 绿色
+    glVertex2f(-0.2f, -0.2f);
+    glColor3f(0.0f, 0.0f, 1.0f);   // 蓝色
+    glVertex2f(0.2f, -0.2f);
+    glEnd();
+}
+
+// 绘制坐标轴
+void drawAxes() {
+    glLineWidth(2.0f);
+    glBegin(GL_LINES);
+    // X轴（红色）
+    glColor3f(1.0f, 0.0f, 0.0f);
+    glVertex2f(-0.9f, 0.0f);
+    glVertex2f(0.9f, 0.0f);
+
+    // Y轴（绿色）
+    glColor3f(0.0f, 1.0f, 0.0f);
+    glVertex2f(0.0f, -0.9f);
+    glVertex2f(0.0f, 0.9f);
+    glEnd();
+
+    // 绘制坐标轴箭头
+    glBegin(GL_TRIANGLES);
+    // X轴箭头
+    glColor3f(1.0f, 0.0f, 0.0f);
+    glVertex2f(0.9f, 0.0f);
+    glVertex2f(0.85f, 0.02f);
+    glVertex2f(0.85f, -0.02f);
+
+    // Y轴箭头
+    glColor3f(0.0f, 1.0f, 0.0f);
+    glVertex2f(0.0f, 0.9f);
+    glVertex2f(0.02f, 0.85f);
+    glVertex2f(-0.02f, 0.85f);
+    glEnd();
+}
+
+// 显示函数
+void display() {
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    // 绘制坐标轴
+    drawAxes();
+
+    // 应用变换
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+
+    switch (currentTransform) {
+    case ORIGINAL:
+        // 无变换
+        break;
+    case ROTATION:
+        glRotatef(rotationAngle, 0.0f, 0.0f, 1.0f);
+        break;
+    case SCALING:
+        glScalef(scalingFactor, scalingFactor, 1.0f);
+        break;
+    case TRANSLATION:
+        glTranslatef(translationX, translationY, 1.0f);
+        break;
+    case REFLECTION:
+        // 关于Y轴对称
+        glScalef(-1.0f, 1.0f, 1.0f);
+        break;
+    case SHEARING:
+        // 创建错切矩阵 (沿X轴错切)
+        GLfloat shearMatrix[16] = {
+            1.0f, 0.0f, 0.0f, 0.0f,
+            shearingFactor, 1.0f, 0.0f, 0.0f,
+            0.0f, 0.0f, 1.0f, 0.0f,
+            0.0f, 0.0f, 0.0f, 1.0f
+        };
+        glMultMatrixf(shearMatrix);
+        break;
+    }
+
+    // 绘制三角形
+    drawTriangle();
+
+    // 绘制变换说明
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    glColor3f(1.0f, 1.0f, 1.0f);
+
+    char text[128];
+    switch (currentTransform) {
+    case ORIGINAL: sprintf_s(text, "Original Triangle"); break;
+    case ROTATION: sprintf_s(text, "Rotation: %.1f degrees", rotationAngle); break;
+    case SCALING: sprintf_s(text, "Scaling: %.1f times", scalingFactor); break;
+    case TRANSLATION: sprintf_s(text, "Translation: (%.1f, %.1f)", translationX, translationY); break;
+    case REFLECTION: sprintf_s(text, "Reflection (about Y-axis)"); break;
+    case SHEARING: sprintf_s(text, "Shearing (factor: %.1f)", shearingFactor); break;
+    }
+
+    glRasterPos2f(-0.4f, 0.9f);
+    for (const char* c = text; *c != '\0'; c++) {
+        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, *c);
+    }
+
+    // 绘制操作提示
+    glColor3f(0.8f, 0.8f, 0.0f);
+    glRasterPos2f(-0.95f, -0.95f);
+    const char* prompt = "Press ENTER to return to menu";
+    for (const char* c = prompt; *c != '\0'; c++) {
+        glutBitmapCharacter(GLUT_BITMAP_9_BY_15, *c);
+    }
+
+    glutSwapBuffers();
+    transformApplied = true;
+}
+
+// 显示菜单
+void showMenu() {
+    std::cout << "\n=== Triangle Transformations ===\n";
+    std::cout << "1. Original Triangle\n";
+    std::cout << "2. Rotation\n";
+    std::cout << "3. Scaling\n";
+    std::cout << "4. Translation\n";
+    std::cout << "5. Reflection (about Y-axis)\n";
+    std::cout << "6. Shearing (along X-axis)\n";
+    std::cout << "7. Exit\n";
+    std::cout << "Select an option (1-7): ";
+}
+
+// 处理用户输入
+void processInput() {
+    while (true) {
+        showMenu();
+
+        int choice;
+        std::cin >> choice;
+
+        if (std::cin.fail()) {
+            std::cin.clear();
+            std::cin.ignore(10000, '\n');
+            std::cout << "Invalid input. Please enter a number.\n";
+            continue;
+        }
+
+        switch (choice) {
+        case 1:
+            currentTransform = ORIGINAL;
+            break;
+        case 2:
+            currentTransform = ROTATION;
+            std::cout << "Enter rotation angle (degrees): ";
+            std::cin >> rotationAngle;
+            break;
+        case 3:
+            currentTransform = SCALING;
+            std::cout << "Enter scaling factor: ";
+            std::cin >> scalingFactor;
+            break;
+        case 4:
+            currentTransform = TRANSLATION;
+            std::cout << "Enter translation X: ";
+            std::cin >> translationX;
+            std::cout << "Enter translation Y: ";
+            std::cin >> translationY;
+            break;
+        case 5:
+            currentTransform = REFLECTION;
+            break;
+        case 6:
+            currentTransform = SHEARING;
+            std::cout << "Enter shearing factor: ";
+            std::cin >> shearingFactor;
+            break;
+        case 7:
+            currentTransform = EXIT;
+            exit(1);
+            return;
+        default:
+            std::cout << "Invalid choice. Please select 1-7.\n";
+            continue;
+        }
+
+        // 清除输入缓冲区
+        std::cin.ignore(10000, '\n');
+
+        // 重绘场景
+        transformApplied = false;
+        glutPostRedisplay();
+
+        // 等待用户按Enter键
+        if (currentTransform != EXIT) {
+            std::cout << "Press ENTER to return to menu...";
+            std::string dummy;
+            std::getline(std::cin, dummy);
+        }
+    }
+}
+
+// 初始化函数
+void init() {
+    glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+    glEnable(GL_DEPTH_TEST);
+
+    // 设置投影矩阵
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    gluOrtho2D(-1.0, 1.0, -1.0, 1.0);
+
+    glMatrixMode(GL_MODELVIEW);
+}
+
+int main(int argc, char** argv) {
+    glutInit(&argc, argv);
+    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
+    glutInitWindowSize(WIDTH, HEIGHT);
+    glutCreateWindow("OpenGL Triangle Transformations");
+
+    init();
+
+    // 设置显示函数
+    glutDisplayFunc(display);
+
+    // 在单独的线程中处理输入，避免阻塞OpenGL主循环
+    std::thread inputThread(processInput);
+    inputThread.detach();
+
+    // 进入GLUT主循环
+    glutMainLoop();
+
+    return 0;
+}
