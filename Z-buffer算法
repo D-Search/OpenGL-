@@ -1,0 +1,205 @@
+#include <GL/glut.h>
+#include <cmath>
+#include <string>
+
+// 旋转角度
+float angleX = 30.0f;
+float angleY = -45.0f;
+
+// 绘制坐标轴
+void drawAxes() {
+    glLineWidth(2.0f);
+    glBegin(GL_LINES);
+    // X轴（红色）
+    glColor3f(1.0f, 0.0f, 0.0f);
+    glVertex3f(-0.9f, 0.0f,0.0f);
+    glVertex3f(0.9f, 0.0f,0.0f);
+
+    // Y轴（绿色）
+    glColor3f(0.0f, 1.0f, 0.0f);
+    glVertex3f(0.0f, -0.9f,0.0f);
+    glVertex3f(0.0f, 0.9f,0.0f);
+
+	//Z轴（蓝色）
+    glColor3f(0.0f, 0.0f, 1.0f);
+    glVertex3f(0.0f, 0.0f,-0.9f);
+    glVertex3f(0.0f, 0.0f,0.9f);
+    glEnd();
+
+    // 绘制坐标轴箭头
+    glBegin(GL_TRIANGLES);
+    // X轴箭头
+    glColor3f(1.0f, 0.0f, 0.0f);
+    glVertex3f(0.9f, 0.0f,0.0f);
+    glVertex3f(0.85f, 0.02f,0.0f);
+    glVertex3f(0.85f, -0.02f,0.0f);
+
+    // Y轴箭头
+    glColor3f(0.0f, 1.0f, 0.0f);
+    glVertex3f(0.0f, 0.9f,0.0f);
+    glVertex3f(0.02f, 0.85f,0.0f);
+    glVertex3f(-0.02f, 0.85f,0.0f);
+
+    // Z轴箭头
+    glColor3f(0.0f, 0.0f, 1.0f);
+    glVertex3f(0.0f, 0.0f,0.9f);
+    glVertex3f(0.02f,0.0f, 0.85f);
+    glVertex3f(-0.02f,0.0f, 0.85f);
+    glEnd();
+
+    // 绘制坐标轴标签
+    glColor3f(1.0, 1.0, 1.0);
+
+    // X轴标签
+    glRasterPos3f(1.05f, 0.0f, 0.0f);
+    glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, 'X');
+
+    // Y轴标签
+    glRasterPos3f(0.0f, 1.05f, 0.0f);
+    glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, 'Y');
+
+    // Z轴标签
+    glRasterPos3f(0.0f, 0.0f, 1.05f);
+    glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, 'Z');
+
+    // 原点标签
+    glRasterPos3f(-0.1f, -0.1f, 0.0f);
+    glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, 'O');
+
+    // 恢复矩阵状态
+    glPopMatrix();
+}
+// 绘制演示物体（展示深度遮挡）
+void drawDemoObjects() {
+    // 在Y=0.5处绘制一个红色方块（较远）
+    glPushMatrix();
+    glTranslatef(0.5f, 0.5f, 0.5f);
+    glColor3f(1.0f, 0.0f, 0.0f);
+    glutSolidCube(0.2f);
+    glPopMatrix();
+
+    // 在Y=0.3处绘制一个绿色方块（较近）
+    glPushMatrix();
+    glTranslatef(0.5f, 0.3f, 0.5f);
+    glColor3f(0.0f, 1.0f, 0.0f);
+    glutSolidCube(0.2f);
+    glPopMatrix();
+
+    // 在Y=0.1处绘制一个蓝色方块（最近）
+    glPushMatrix();
+    glTranslatef(0.5f, 0.1f, 0.5f);
+    glColor3f(0.0f, 0.0f, 1.0f);
+    glutSolidCube(0.2f);
+    glPopMatrix();
+
+    // 在Y=0.4处绘制一个黄色球体（在红色和绿色之间）
+    glPushMatrix();
+    glTranslatef(0.7f, 0.4f, 0.3f);
+    glColor3f(1.0f, 1.0f, 0.0f);
+    glutSolidSphere(0.1f, 20, 20);
+    glPopMatrix();
+}
+
+// 显示函数
+void display() {
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    // 设置模型视图矩阵
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    gluLookAt(2.0, 2.0, 2.0,  // 相机位置
+        0.0, 0.0, 0.0,  // 观察点
+        0.0, 1.0, 0.0); // 上方向向量
+
+    // 应用旋转
+    glRotatef(angleX, 1.0f, 0.0f, 0.0f);
+    glRotatef(angleY, 0.0f, 1.0f, 0.0f);
+
+    // 绘制网格平面（帮助理解3D空间）
+    glColor3f(0.3f, 0.3f, 0.3f);
+    glBegin(GL_LINES);
+    for (int i = -5; i <= 5; i++) {
+        glVertex3f(i, 0.0f, -5.0f);
+        glVertex3f(i, 0.0f, 5.0f);
+        glVertex3f(-5.0f, 0.0f, i);
+        glVertex3f(5.0f, 0.0f, i);
+    }
+    glEnd();
+    // 绘制坐标轴
+    drawAxes();
+    // 绘制演示物体（展示深度遮挡）
+    drawDemoObjects();
+    glPopMatrix();
+    glMatrixMode(GL_PROJECTION);
+    glPopMatrix();
+    glMatrixMode(GL_MODELVIEW);
+    glutSwapBuffers();
+    }
+// 窗口大小调整
+void reshape(int w, int h) {
+    glViewport(0, 0, w, h);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    gluPerspective(45.0f, (GLfloat)w / (GLfloat)h, 0.1f, 100.0f);
+    glMatrixMode(GL_MODELVIEW);
+}
+
+// 键盘控制
+void keyboard(int key, int x, int y) {
+    switch (key) {
+    case GLUT_KEY_LEFT:
+        angleY -= 5.0f;
+        break;
+    case GLUT_KEY_RIGHT:
+        angleY += 5.0f;
+        break;
+    case GLUT_KEY_UP:
+        angleX -= 5.0f;
+        break;
+    case GLUT_KEY_DOWN:
+        angleX += 5.0f;
+        break;
+    }
+    glutPostRedisplay();
+}
+
+void normalKeys(unsigned char key, int x, int y) {
+    if (key == 'r' || key == 'R') {
+        angleX = 30.0f;
+        angleY = -45.0f;
+        glutPostRedisplay();
+    }
+}
+    
+    
+
+
+// 初始化函数
+void init() {
+    glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+    glEnable(GL_DEPTH_TEST);
+
+    // 设置投影矩阵
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    gluOrtho2D(-1.0, 1.0, -1.0, 1.0);
+
+    glMatrixMode(GL_MODELVIEW);
+}
+
+int main(int argc, char** argv) {
+    glutInit(&argc, argv);
+    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
+    glutInitWindowSize(800, 600);
+    glutCreateWindow("3D Coordinate System with Y as Depth Axis");
+
+    init();
+
+    glutDisplayFunc(display);
+    glutReshapeFunc(reshape);
+    glutSpecialFunc(keyboard);
+    glutKeyboardFunc(normalKeys);
+
+    glutMainLoop();
+    return 0;
+}
