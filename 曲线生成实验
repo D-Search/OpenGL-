@@ -205,7 +205,7 @@ int main(int argc, char** argv) {
     glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB);
     glutInitWindowSize(800, 600);
     glutInitWindowPosition(100, 100);
-    glutCreateWindow("Bezier三次样条插值曲线");
+    glutCreateWindow("Bezier样条插值曲线");
 
     init();
     glutDisplayFunc(display);
