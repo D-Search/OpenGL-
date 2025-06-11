@@ -1,0 +1,108 @@
+#include <GL/glut.h>
+#include <vector>
+
+// 存储点的结构体
+struct Point {
+    float x, y;
+};
+
+// 存储所有线段的端点
+std::vector<Point> lineSegments;
+Point lastPoint; // 上一次选择的点
+bool firstSegment = true; // 标记是否在绘制第一条线段
+
+// 初始化函数
+void init() {
+    glClearColor(1.0, 1.0, 1.0, 1.0); // 设置背景为白色
+    glMatrixMode(GL_PROJECTION);
+    gluOrtho2D(0.0, 800.0, 600.0, 0.0); // 设置视口大小为800x600
+}
+
+// 显示回调函数
+void display() {
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    // 绘制所有线段
+    glColor3f(0.0, 0.0, 1.0); // 设置颜色为蓝色
+    glLineWidth(2.0); // 设置线宽为2像素
+
+    glBegin(GL_LINES);
+    for (size_t i = 0; i < lineSegments.size(); i += 2) {
+        // 每两个点构成一条线段
+        if (i + 1 < lineSegments.size()) {
+            glVertex2f(lineSegments[i].x, lineSegments[i].y);
+            glVertex2f(lineSegments[i + 1].x, lineSegments[i + 1].y);
+        }
+    }
+    glEnd();
+
+    // 绘制所有点
+    glColor3f(1.0, 0.0, 0.0); // 设置颜色为红色
+    glPointSize(5.0); // 设置点大小为5像素
+
+    glBegin(GL_POINTS);
+    for (const auto& point : lineSegments) {
+        glVertex2f(point.x, point.y);
+    }
+    glEnd();
+
+    glFlush();
+}
+
+// 鼠标回调函数
+void mouse(int button, int state, int x, int y) {
+    if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
+        Point currentPoint = { static_cast<float>(x), static_cast<float>(y) };
+
+        if (firstSegment) {
+            // 处理第一条线段
+            if (lineSegments.empty()) {
+                // 第一个点
+                lineSegments.push_back(currentPoint);
+                lastPoint = currentPoint;
+            }
+            else if (lineSegments.size() == 1) {
+                // 第二个点，完成第一条线段
+                lineSegments.push_back(currentPoint);
+                lastPoint = currentPoint;
+                firstSegment = false;
+            }
+        }
+        else {
+            // 后续线段：连接新点到上一个点
+            lineSegments.push_back(lastPoint);
+            lineSegments.push_back(currentPoint);
+            lastPoint = currentPoint;
+        }
+
+        // 重绘场景
+        glutPostRedisplay();
+    }
+}
+
+// 键盘回调函数（用于重置）
+void keyboard(unsigned char key, int x, int y) {
+    if (key == 'r' || key == 'R') {
+        lineSegments.clear();
+        firstSegment = true;
+        glutPostRedisplay();
+    }
+}
+
+int main(int argc, char** argv) {
+    glutInit(&argc, argv);
+    glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB);
+    glutInitWindowSize(800, 600);
+    glutInitWindowPosition(100, 100);
+    glutCreateWindow("交互式直线段绘制");
+
+    init();
+
+    glutDisplayFunc(display);
+    glutMouseFunc(mouse);
+    glutKeyboardFunc(keyboard); // 注册键盘回调
+
+    glutMainLoop();
+
+    return 0;
+}
