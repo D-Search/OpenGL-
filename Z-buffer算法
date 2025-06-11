@@ -12,39 +12,39 @@ void drawAxes() {
     glBegin(GL_LINES);
     // X轴（红色）
     glColor3f(1.0f, 0.0f, 0.0f);
-    glVertex3f(-0.9f, 0.0f,0.0f);
-    glVertex3f(0.9f, 0.0f,0.0f);
+    glVertex3f(-0.9f, 0.0f, 0.0f);
+    glVertex3f(0.9f, 0.0f, 0.0f);
 
     // Y轴（绿色）
     glColor3f(0.0f, 1.0f, 0.0f);
-    glVertex3f(0.0f, -0.9f,0.0f);
-    glVertex3f(0.0f, 0.9f,0.0f);
+    glVertex3f(0.0f, -0.9f, 0.0f);
+    glVertex3f(0.0f, 0.9f, 0.0f);
 
-	//Z轴（蓝色）
+    //Z轴（蓝色）
     glColor3f(0.0f, 0.0f, 1.0f);
-    glVertex3f(0.0f, 0.0f,-0.9f);
-    glVertex3f(0.0f, 0.0f,0.9f);
+    glVertex3f(0.0f, 0.0f, -0.9f);
+    glVertex3f(0.0f, 0.0f, 0.9f);
     glEnd();
 
     // 绘制坐标轴箭头
     glBegin(GL_TRIANGLES);
     // X轴箭头
     glColor3f(1.0f, 0.0f, 0.0f);
-    glVertex3f(0.9f, 0.0f,0.0f);
-    glVertex3f(0.85f, 0.02f,0.0f);
-    glVertex3f(0.85f, -0.02f,0.0f);
+    glVertex3f(0.9f, 0.0f, 0.0f);
+    glVertex3f(0.85f, 0.02f, 0.0f);
+    glVertex3f(0.85f, -0.02f, 0.0f);
 
     // Y轴箭头
     glColor3f(0.0f, 1.0f, 0.0f);
-    glVertex3f(0.0f, 0.9f,0.0f);
-    glVertex3f(0.02f, 0.85f,0.0f);
-    glVertex3f(-0.02f, 0.85f,0.0f);
+    glVertex3f(0.0f, 0.9f, 0.0f);
+    glVertex3f(0.02f, 0.85f, 0.0f);
+    glVertex3f(-0.02f, 0.85f, 0.0f);
 
     // Z轴箭头
     glColor3f(0.0f, 0.0f, 1.0f);
-    glVertex3f(0.0f, 0.0f,0.9f);
-    glVertex3f(0.02f,0.0f, 0.85f);
-    glVertex3f(-0.02f,0.0f, 0.85f);
+    glVertex3f(0.0f, 0.0f, 0.9f);
+    glVertex3f(0.02f, 0.0f, 0.85f);
+    glVertex3f(-0.02f, 0.0f, 0.85f);
     glEnd();
 
     // 绘制坐标轴标签
@@ -134,7 +134,7 @@ void display() {
     glPopMatrix();
     glMatrixMode(GL_MODELVIEW);
     glutSwapBuffers();
-    }
+}
 // 窗口大小调整
 void reshape(int w, int h) {
     glViewport(0, 0, w, h);
@@ -170,14 +170,14 @@ void normalKeys(unsigned char key, int x, int y) {
         glutPostRedisplay();
     }
 }
-    
-    
+
+
 
 
 // 初始化函数
 void init() {
     glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_DEPTH_TEST);//Z-Buffer算法实现
 
     // 设置投影矩阵
     glMatrixMode(GL_PROJECTION);
@@ -191,7 +191,7 @@ int main(int argc, char** argv) {
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
     glutInitWindowSize(800, 600);
-    glutCreateWindow("3D Coordinate System with Y as Depth Axis");
+    glutCreateWindow("Z-Buffer三维物体多角度投影");
 
     init();
 
