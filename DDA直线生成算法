@@ -1,0 +1,62 @@
+#include <GL/glut.h>
+#include <cmath>
+#include <vector>
+
+// 直线结构体
+struct Line {
+    float x1, y1, x2, y2;
+};
+
+// 初始化函数
+void init() {
+    glClearColor(1.0, 1.0, 1.0, 1.0); // 白色背景
+    glMatrixMode(GL_PROJECTION);
+    gluOrtho2D(0.0, 800.0, 600.0, 0.0); // 800x600视口
+}
+
+// DDA算法绘制直线
+void drawLineDDA(float x1, float y1, float x2, float y2) {
+    float dx = x2 - x1;
+    float dy = y2 - y1;
+    float steps = fmax(fabs(dx), fabs(dy));
+
+    // 计算增量
+    float xIncrement = dx / steps;
+    float yIncrement = dy / steps;
+
+    float x = x1;
+    float y = y1;
+
+    glBegin(GL_POINTS);
+    for (int i = 0; i <= steps; i++) {
+        glVertex2i(round(x), round(y));
+        x += xIncrement;
+        y += yIncrement;
+    }
+    glEnd();
+}
+
+// 显示回调函数
+void display() {
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    // 示例直线：斜线（斜率<1）
+    glColor3f(0.0, 0.0, 1.0); // 蓝色
+    drawLineDDA(300, 200, 500, 300);
+
+    glFlush();
+}
+
+int main(int argc, char** argv) {
+    glutInit(&argc, argv);
+    glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB);
+    glutInitWindowSize(800, 600);
+    glutInitWindowPosition(100, 100);
+    glutCreateWindow("DDA直线生成算法演示");
+
+    init();
+    glutDisplayFunc(display);
+    glutMainLoop();
+
+    return 0;
+}
