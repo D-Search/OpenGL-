@@ -1,0 +1,218 @@
+#include <GL/glut.h>
+#include <vector>
+#include <cmath>
+
+// 控制点结构
+struct Point {
+    float x, y;
+    bool selected = false;
+};
+
+std::vector<Point> controlPoints;  // 控制点集合
+bool showControlPolygon = true;    // 是否显示控制多边形
+bool showControlPoints = true;     // 是否显示控制点
+const int SEGMENTS = 100;          // 每段曲线的细分段数
+
+// 初始化函数
+void init() {
+    glClearColor(1.0, 1.0, 1.0, 1.0); // 白色背景
+    glMatrixMode(GL_PROJECTION);
+    gluOrtho2D(0.0, 800.0, 600.0, 0.0); // 800x600视口
+
+    // 添加一些默认控制点
+    controlPoints.push_back({ 100, 300 });
+    controlPoints.push_back({ 200, 200 });
+    controlPoints.push_back({ 300, 400 });
+    controlPoints.push_back({ 400, 300 });
+    controlPoints.push_back({ 500, 200 });
+    controlPoints.push_back({ 600, 400 });
+    controlPoints.push_back({ 700, 300 });
+}
+
+// 三次Bezier基函数
+void bezierBasis(float t, float& b0, float& b1, float& b2, float& b3) {
+    float t2 = t * t;
+    float t3 = t2 * t;
+    float mt = 1 - t;
+    float mt2 = mt * mt;
+    float mt3 = mt2 * mt;
+
+    b0 = mt3;
+    b1 = 3 * mt2 * t;
+    b2 = 3 * mt * t2;
+    b3 = t3;
+}
+
+// 计算三次Bezier曲线点
+Point evaluateBezier(const Point& p0, const Point& p1,
+    const Point& p2, const Point& p3, float t) {
+    float b0, b1, b2, b3;
+    bezierBasis(t, b0, b1, b2, b3);
+
+    Point pt;
+    pt.x = b0 * p0.x + b1 * p1.x + b2 * p2.x + b3 * p3.x;
+    pt.y = b0 * p0.y + b1 * p1.y + b2 * p2.y + b3 * p3.y;
+    return pt;
+}
+
+// 生成三次Bezier样条曲线
+std::vector<Point> generateBezierSpline() {
+    std::vector<Point> curvePoints;
+
+    if (controlPoints.size() < 4) return curvePoints;
+
+    // 对于每4个控制点生成一段Bezier曲线
+    for (size_t i = 0; i <= controlPoints.size() - 4; i += 3) {
+        const Point& p0 = controlPoints[i];
+        const Point& p1 = controlPoints[i + 1];
+        const Point& p2 = controlPoints[i + 2];
+        const Point& p3 = controlPoints[i + 3];
+
+        for (int j = 0; j <= SEGMENTS; ++j) {
+            float t = j / (float)SEGMENTS;
+            curvePoints.push_back(evaluateBezier(p0, p1, p2, p3, t));
+        }
+    }
+
+    return curvePoints;
+}
+
+// 显示回调函数
+void display() {
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    // 生成曲线点
+    std::vector<Point> curvePoints = generateBezierSpline();
+
+    // 绘制曲线
+    glColor3f(0.0, 0.0, 1.0); // 蓝色曲线
+    glLineWidth(2.0);
+    glBegin(GL_LINE_STRIP);
+    for (const auto& pt : curvePoints) {
+        glVertex2f(pt.x, pt.y);
+    }
+    glEnd();
+
+    // 绘制控制多边形
+    if (showControlPolygon && controlPoints.size() > 1) {
+        glColor3f(0.7, 0.7, 0.7); // 灰色控制多边形
+        glLineWidth(1.0);
+        glBegin(GL_LINE_STRIP);
+        for (const auto& pt : controlPoints) {
+            glVertex2f(pt.x, pt.y);
+        }
+        glEnd();
+    }
+
+    // 绘制控制点
+    if (showControlPoints && !controlPoints.empty()) {
+        glPointSize(8.0);
+        glBegin(GL_POINTS);
+        for (const auto& pt : controlPoints) {
+            if (pt.selected) {
+                glColor3f(1.0, 0.0, 0.0); // 红色表示选中
+            }
+            else {
+                glColor3f(0.0, 1.0, 0.0); // 绿色表示未选中
+            }
+            glVertex2f(pt.x, pt.y);
+        }
+        glEnd();
+    }
+
+    glFlush();
+}
+
+// 鼠标回调函数
+void mouse(int button, int state, int x, int y) {
+    static int selectedIndex = -1;
+
+    if (button == GLUT_LEFT_BUTTON) {
+        if (state == GLUT_DOWN) {
+            // 检查是否点击了控制点
+            for (size_t i = 0; i < controlPoints.size(); ++i) {
+                float dx = x - controlPoints[i].x;
+                float dy = y - controlPoints[i].y;
+                if (dx * dx + dy * dy < 100) { // 10像素半径内
+                    controlPoints[i].selected = true;
+                    selectedIndex = i;
+                    break;
+                }
+            }
+
+            // 如果没有选中任何点，添加新控制点
+            if (selectedIndex == -1) {
+                controlPoints.push_back({ (float)x, (float)y });
+            }
+        }
+        else if (state == GLUT_UP) {
+            // 取消所有选中状态
+            for (auto& pt : controlPoints) {
+                pt.selected = false;
+            }
+            selectedIndex = -1;
+        }
+    }
+    else if (button == GLUT_RIGHT_BUTTON && state == GLUT_DOWN) {
+        // 右键删除控制点
+        for (auto it = controlPoints.begin(); it != controlPoints.end(); ++it) {
+            float dx = x - it->x;
+            float dy = y - it->y;
+            if (dx * dx + dy * dy < 100) {
+                controlPoints.erase(it);
+                break;
+            }
+        }
+    }
+
+    glutPostRedisplay();
+}
+
+// 鼠标移动回调函数
+void motion(int x, int y) {
+    // 移动选中的控制点
+    for (auto& pt : controlPoints) {
+        if (pt.selected) {
+            pt.x = x;
+            pt.y = y;
+            break;
+        }
+    }
+    glutPostRedisplay();
+}
+
+// 键盘回调函数
+void keyboard(unsigned char key, int x, int y) {
+    switch (key) {
+    case 'c': // 切换控制多边形显示
+        showControlPolygon = !showControlPolygon;
+        break;
+    case 'p': // 切换控制点显示
+        showControlPoints = !showControlPoints;
+        break;
+    case 'r': // 重置控制点
+        controlPoints.clear();
+        init(); // 重新初始化默认控制点
+        break;
+    case 27: // ESC键退出
+        exit(0);
+    }
+    glutPostRedisplay();
+}
+
+int main(int argc, char** argv) {
+    glutInit(&argc, argv);
+    glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB);
+    glutInitWindowSize(800, 600);
+    glutInitWindowPosition(100, 100);
+    glutCreateWindow("Bezier三次样条插值曲线");
+
+    init();
+    glutDisplayFunc(display);
+    glutMouseFunc(mouse);
+    glutMotionFunc(motion);
+    glutKeyboardFunc(keyboard);
+
+    glutMainLoop();
+    return 0;
+}
