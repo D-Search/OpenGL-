@@ -1,0 +1,116 @@
+#include <GL/glut.h>
+#include <iostream>
+#include <vector>
+
+using namespace std;
+
+// 屏幕尺寸
+const int SCREEN_WIDTH = 800;
+const int SCREEN_HEIGHT = 600;
+
+// 存储鼠标点击的点
+vector<pair<int, int>> points;
+
+// Bresenham中点算法实现
+void bresenhamLine(int x1, int y1, int x2, int y2) {
+    int dx = abs(x2 - x1);
+    int dy = abs(y2 - y1);
+    int sx = (x1 < x2) ? 1 : -1;
+    int sy = (y1 < y2) ? 1 : -1;
+    int err = dx - dy;
+    int err2;
+
+    glBegin(GL_POINTS);
+    while (true) {
+        glVertex2i(x1, y1);
+
+        if (x1 == x2 && y1 == y2) break;
+
+        err2 = 2 * err;
+        if (err2 > -dy) {
+            err -= dy;
+            x1 += sx;
+        }
+        if (err2 < dx) {
+            err += dx;
+            y1 += sy;
+        }
+    }
+    glEnd();
+}
+
+// 绘制回调函数
+void display() {
+    glClear(GL_COLOR_BUFFER_BIT);
+    glColor3f(1.0, 1.0, 1.0);  // 设置绘制颜色为白色
+
+    // 如果有两个以上的点，绘制直线
+    if (points.size() >= 2) {
+        for (size_t i = 0; i < points.size() - 1; i += 2) {
+            bresenhamLine(points[i].first, points[i].second,
+                points[i + 1].first, points[i + 1].second);
+        }
+    }
+
+    glutSwapBuffers();
+}
+
+// 鼠标回调函数
+void mouse(int button, int state, int x, int y) {
+    if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
+        // 转换坐标（OpenGL的原点在左下角，而鼠标的原点在左上角）
+        int glY = SCREEN_HEIGHT - y;
+
+        // 记录点击的点
+        points.push_back(make_pair(x, glY));
+
+        // 刷新显示
+        glutPostRedisplay();
+
+        cout << "点击位置: (" << x << ", " << glY << ")" << endl;
+
+        // 如果已经有两个点，提示用户可以继续绘制新直线
+        if (points.size() % 2 == 0) {
+            cout << "已记录两个点，使用Bresenham算法绘制了一条直线。" << endl;
+            cout << "请继续点击两个点绘制新直线..." << endl;
+        }
+        else {
+            cout << "已记录起点，请点击终点..." << endl;
+        }
+    }
+}
+
+// 窗口大小改变回调函数
+void reshape(int width, int height) {
+    glViewport(0, 0, width, height);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    gluOrtho2D(0, width, 0, height);
+}
+
+// 初始化OpenGL
+void init() {
+    glClearColor(0.0, 0.0, 0.0, 0.0);  // 设置背景色为黑色
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+}
+
+int main(int argc, char** argv) {
+    cout << "Bresenham中点生成算法演示" << endl;
+    cout << "使用方法：在窗口中依次点击两个点来绘制一条直线" << endl;
+    cout << "可以继续点击两个点来绘制多条直线..." << endl;
+
+    glutInit(&argc, argv);
+    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
+    glutInitWindowSize(SCREEN_WIDTH, SCREEN_HEIGHT);
+    glutCreateWindow("Bresenham Line");
+
+    init();
+
+    glutDisplayFunc(display);
+    glutReshapeFunc(reshape);
+    glutMouseFunc(mouse);
+
+    glutMainLoop();
+    return 0;
+}
