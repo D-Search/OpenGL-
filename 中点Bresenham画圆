@@ -1,0 +1,152 @@
+#include <GL/glut.h>
+#include <iostream>
+#include <vector>
+#include <cmath>
+
+using namespace std;
+
+// 屏幕尺寸
+const int SCREEN_WIDTH = 800;
+const int SCREEN_HEIGHT = 600;
+
+// 存储鼠标点击的点
+vector<pair<int, int>> points;
+
+// 使用八分法绘制圆上的点
+void drawCirclePoints(int xc, int yc, int x, int y) {
+    glBegin(GL_POINTS);
+    // 八分法对称点
+    glVertex2i(xc + x, yc + y);
+    glVertex2i(xc - x, yc + y);
+    glVertex2i(xc + x, yc - y);
+    glVertex2i(xc - x, yc - y);
+    glVertex2i(xc + y, yc + x);
+    glVertex2i(xc - y, yc + x);
+    glVertex2i(xc + y, yc - x);
+    glVertex2i(xc - y, yc - x);
+    glEnd();
+}
+
+// 中点Bresenham算法画圆
+void midpointBresenhamCircle(int xc, int yc, int radius) {
+    int x = 0;
+    int y = radius;
+    int p = 1 - radius;  // 初始决策参数
+
+    drawCirclePoints(xc, yc, x, y);
+    //误差项递推公式
+    while (x < y) {
+        x++;
+        if (p <= 0) {
+            p += 2 * x + 3;
+        }
+        else {
+            y--;
+            p += 2 * (x - y) + 5;
+        }
+        drawCirclePoints(xc, yc, x, y);
+    }
+}
+
+// 计算两点间的距离
+int calculateRadius(int x1, int y1, int x2, int y2) {
+    return static_cast<int>(sqrt(pow(x2 - x1, 2) + pow(y2 - y1, 2)));
+}
+
+// 绘制回调函数
+void display() {
+    glClear(GL_COLOR_BUFFER_BIT);
+    glColor3f(1.0, 1.0, 1.0);  // 设置绘制颜色为白色
+
+    // 如果有两个点，绘制圆
+    if (points.size() >= 2) {
+        for (size_t i = 0; i < points.size() - 1; i += 2) {
+            int xc = points[i].first;
+            int yc = points[i].second;
+            int x = points[i + 1].first;
+            int y = points[i + 1].second;
+
+            int radius = calculateRadius(xc, yc, x, y);
+            midpointBresenhamCircle(xc, yc, radius);
+
+            // 绘制圆心和圆上的点
+            glColor3f(1.0, 0.0, 0.0);  // 红色
+            glPointSize(5.0);
+            glBegin(GL_POINTS);
+            glVertex2i(xc, yc);  // 圆心
+            glVertex2i(x, y);    // 圆上的点
+            glEnd();
+            glPointSize(1.0);
+            glColor3f(1.0, 1.0, 1.0);  // 恢复白色
+        }
+    }
+
+    glutSwapBuffers();
+}
+
+// 鼠标回调函数
+void mouse(int button, int state, int x, int y) {
+    if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
+        // 转换坐标（OpenGL的原点在左下角，而鼠标的原点在左上角）
+        int glY = SCREEN_HEIGHT - y;
+
+        // 记录点击的点
+        points.push_back(make_pair(x, glY));
+
+        // 刷新显示
+        glutPostRedisplay();
+
+        cout << "点击位置: (" << x << ", " << glY << ")" << endl;
+
+        // 如果已经有两个点，提示用户可以继续绘制新圆
+        if (points.size() % 2 == 0) {
+            int xc = points[points.size() - 2].first;
+            int yc = points[points.size() - 2].second;
+            int x = points[points.size() - 1].first;
+            int y = points[points.size() - 1].second;
+            int radius = calculateRadius(xc, yc, x, y);
+
+            cout << "已记录圆心和圆上一点，绘制圆: 圆心(" << xc << ", " << yc << "), 半径=" << radius << endl;
+            cout << "请继续点击两个点绘制新圆..." << endl;
+        }
+        else {
+            cout << "已记录圆心，请点击圆上一点..." << endl;
+        }
+    }
+}
+
+// 窗口大小改变回调函数
+void reshape(int width, int height) {
+    glViewport(0, 0, width, height);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    gluOrtho2D(0, width, 0, height);
+}
+
+// 初始化OpenGL
+void init() {
+    glClearColor(0.0, 0.0, 0.0, 0.0);  // 设置背景色为黑色
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+}
+
+int main(int argc, char** argv) {
+    cout << "中点Bresenham算法结合八分法画圆演示" << endl;
+    cout << "使用方法：在窗口中依次点击两个点来绘制一个圆" << endl;
+    cout << "第一个点为圆心，第二个点确定半径" << endl;
+    cout << "可以继续点击两个点来绘制多个圆..." << endl;
+
+    glutInit(&argc, argv);
+    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
+    glutInitWindowSize(SCREEN_WIDTH, SCREEN_HEIGHT);
+    glutCreateWindow("中点Bresenham算法画圆");
+
+    init();
+
+    glutDisplayFunc(display);
+    glutReshapeFunc(reshape);
+    glutMouseFunc(mouse);
+
+    glutMainLoop();
+    return 0;
+}
