@@ -1,0 +1,92 @@
+#include <GL/glut.h>
+#include <cmath>
+
+// 透视投影参数（扩大视野范围）
+float fovy = 60.0f;       // 原45→60（增加视野角度）
+float aspect = 1.0f;
+float zNear = 0.1f;
+float zFar = 100.0f;      // 原50→100
+
+// 变换参数
+float angleX = 30.0f;
+float angleY = 45.0f;
+float translateZ = -8.0f;  // 原-5→-8（后移摄像机）
+
+const float SCALE_FACTOR = 0.6f; // 全局缩放系数
+
+
+void init() {
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glEnable(GL_DEPTH_TEST);
+}
+
+void display() {
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    // 设置透视投影
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    gluPerspective(fovy, aspect, zNear, zFar);
+
+    // 设置模型视图矩阵
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    glTranslatef(0.0f, 0.0f, translateZ);
+    glRotatef(angleX, 1.0f, 0.0f, 0.0f);
+    glRotatef(angleY, 0.0f, 1.0f, 0.0f);
+
+    glColor3f(1.0f, 1.0f, 1.0f);
+
+    // 绘制所有五种柏拉图实体（缩小并重新布局）
+    glPushMatrix();
+    glTranslatef(-1.5f, 1.0f, 0.0f);
+    glScalef(SCALE_FACTOR, SCALE_FACTOR, SCALE_FACTOR); // 统一缩放
+    glutWireTetrahedron();
+    glPopMatrix();
+
+    glPushMatrix();
+    glTranslatef(0.0f, 1.0f, 0.0f);
+    glScalef(SCALE_FACTOR, SCALE_FACTOR, SCALE_FACTOR);
+    glutWireCube(1.0);
+    glPopMatrix();
+
+    glPushMatrix();
+    glTranslatef(1.5f, 1.0f, 0.0f);
+    glScalef(SCALE_FACTOR, SCALE_FACTOR, SCALE_FACTOR);
+    glutWireOctahedron();
+    glPopMatrix();
+
+    glPushMatrix();
+    glTranslatef(-0.75f, -1.0f, 0.0f);
+    glScalef(SCALE_FACTOR, SCALE_FACTOR, SCALE_FACTOR);
+    glutWireDodecahedron();
+    glPopMatrix();
+
+    glPushMatrix();
+    glTranslatef(0.75f, -0.25f, 0.0f);
+    glScalef(SCALE_FACTOR, SCALE_FACTOR, SCALE_FACTOR);
+    glutWireIcosahedron();
+    glPopMatrix();
+
+    glutSwapBuffers();
+}
+
+void reshape(int w, int h) {
+    aspect = (float)w / h;
+    glViewport(0, 0, w, h);
+}
+
+
+int main(int argc, char** argv) {
+    glutInit(&argc, argv);
+    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
+    glutInitWindowSize(800, 600);
+    glutCreateWindow("多面体观察");
+
+    init();
+    glutDisplayFunc(display);
+    glutReshapeFunc(reshape);
+
+    glutMainLoop();
+    return 0;
+}
