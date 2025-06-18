@@ -1,0 +1,139 @@
+#include <GL/glut.h>
+#include <vector>
+#include <cmath>
+#include <ctime>
+// 裁剪窗口边界
+const float X_MIN = -0.5f, X_MAX = 0.5f;
+const float Y_MIN = -0.5f, Y_MAX = 0.5f;
+
+// 原始多边形顶点（示例：三角形）
+std::vector<std::pair<float, float>> originalPolygon = {
+	{-0.7f, -0.7f}, {0.0f, 0.1f}, {0.2f, 0.2f},{1.0f, -0.2f},{-0.8f, -0.9f}
+};
+
+// 判断点是否在裁剪边内侧
+bool inside(const std::pair<float, float>& p, int edge) {
+    switch (edge) {
+    case 0: return p.first >= X_MIN;  // 左
+    case 1: return p.second <= Y_MAX; // 上
+    case 2: return p.first <= X_MAX;  // 右
+    case 3: return p.second >= Y_MIN; // 下
+    default: return false;
+    }
+}
+
+// 计算线段与裁剪边的交点
+std::pair<float, float> intersect(
+    const std::pair<float, float>& s,
+    const std::pair<float, float>& p,
+    int edge
+) {
+    float x, y;
+    float slope = (p.second - s.second) / (p.first - s.first);
+
+    switch (edge) {
+    case 0: // 左边界X_MIN
+        x = X_MIN;
+        y = s.second + (X_MIN - s.first) * slope;
+        break;
+    case 1: // 上边界Y_MAX
+        y = Y_MAX;
+        x = s.first + (Y_MAX - s.second) / slope;
+        break;
+    case 2: // 右边界X_MAX
+        x = X_MAX;
+        y = s.second + (X_MAX - s.first) * slope;
+        break;
+    case 3: // 下边界Y_MIN
+        y = Y_MIN;
+        x = s.first + (Y_MIN - s.second) / slope;
+        break;
+    }
+    return { x, y };
+}
+
+// Sutherland-Hodgman算法
+std::vector<std::pair<float, float>> clipPolygon(
+    const std::vector<std::pair<float, float>>& polygon
+) {
+    std::vector<std::pair<float, float>> output = polygon;
+
+    for (int edge = 0; edge < 4; edge++) { // 处理4条裁剪边
+        std::vector<std::pair<float, float>> input = output;
+        output.clear();
+        if (input.empty()) break;
+
+        auto s = input.back(); // 最后一个点作为起始点
+        for (const auto& p : input) {
+            if (inside(p, edge)) {
+                if (!inside(s, edge)) {
+                    output.push_back(intersect(s, p, edge));
+                }
+                output.push_back(p);
+            }
+            else if (inside(s, edge)) {
+                output.push_back(intersect(s, p, edge));
+            }
+            s = p;
+        }
+    }
+    return output;
+}
+
+// 绘制多边形
+void drawPolygon(
+    const std::vector<std::pair<float, float>>& polygon,
+    float r, float g, float b
+) {
+    glColor3f(r, g, b);
+    glBegin(GL_POLYGON);
+    for (const auto& v : polygon) {
+        glVertex2f(v.first, v.second);
+    }
+    glEnd();
+}
+
+// 显示回调函数
+void display() {
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    // 绘制裁剪窗口（红色边框）
+    glColor3f(1.0f, 0.0f, 0.0f);
+    glBegin(GL_LINE_LOOP);
+    glVertex2f(X_MIN, Y_MIN);
+    glVertex2f(X_MAX, Y_MIN);
+    glVertex2f(X_MAX, Y_MAX);
+    glVertex2f(X_MIN, Y_MAX);
+    glEnd();
+
+    // 绘制原始多边形（绿色）
+    drawPolygon(originalPolygon, 0.0f, 1.0f, 0.0f);
+
+    // 绘制裁剪后多边形（蓝色）
+    auto clipped = clipPolygon(originalPolygon);
+    drawPolygon(clipped, 0.0f, 0.0f, 1.0f);
+
+    glFlush();
+}
+
+// 初始化函数
+void init() {
+    glClearColor(1.0f, 1.0f, 1.0f, 1.0f); // 白色背景
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    gluOrtho2D(-1.0, 1.0, -1.0, 1.0);    // 坐标系范围
+}
+
+// 主函数
+int main(int argc, char** argv) {
+    glutInit(&argc, argv);
+    glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB);
+    glutInitWindowSize(800, 800);
+    glutCreateWindow("Sutherland-Hodgman Clipping");
+
+    init();
+    glutDisplayFunc(display);
+    glutMainLoop();
+
+    return 0;
+}
