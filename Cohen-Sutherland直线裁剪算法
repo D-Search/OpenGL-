@@ -1,0 +1,294 @@
+#include <GL/glut.h>
+#include <iostream>
+#include <vector>
+#include <sstream>
+
+using namespace std;
+
+// 定义区域编码
+const int INSIDE = 0; // 0000
+const int LEFT = 1;   // 0001
+const int RIGHT = 2;  // 0010
+const int BOTTOM = 4; // 0100
+const int TOP = 8;    // 1000
+
+// 裁剪窗口坐标
+int xMin = 0, yMin = 0, xMax = 0, yMax = 0;
+
+// 线段结构体
+struct Line {
+    int x1, y1, x2, y2;
+    bool clipped = false;
+};
+
+vector<Line> lines; // 存储所有线段
+bool windowDefined = false; // 是否已定义裁剪窗口
+
+// 输入状态
+enum InputState {
+    IDLE,
+    INPUT_WINDOW,
+    INPUT_LINE_START,
+    INPUT_LINE_END
+};
+InputState currentState = IDLE;
+
+// 当前输入缓存
+string inputBuffer;
+Line currentLine;
+
+// 计算点的区域编码
+int computeCode(int x, int y) {
+    int code = INSIDE;
+
+    if (x < xMin) code |= LEFT;
+    else if (x > xMax) code |= RIGHT;
+
+    if (y < yMin) code |= BOTTOM;
+    else if (y > yMax) code |= TOP;
+
+    return code;
+}
+
+// Cohen-Sutherland直线裁剪算法
+void cohenSutherlandClip(Line& line) {
+    int x1 = line.x1, y1 = line.y1;
+    int x2 = line.x2, y2 = line.y2;
+
+    int code1 = computeCode(x1, y1);
+    int code2 = computeCode(x2, y2);
+
+    bool accept = false;
+
+    while (true) {
+        if ((code1 == 0) && (code2 == 0)) {
+            accept = true;
+            break;
+        }
+        else if (code1 & code2) {
+            break;
+        }
+        else {
+            int codeOut;
+            int x, y;
+
+            if (code1 != 0)
+                codeOut = code1;
+            else
+                codeOut = code2;
+
+            if (codeOut & TOP) {
+                x = x1 + (x2 - x1) * (yMax - y1) / (y2 - y1);
+                y = yMax;
+            }
+            else if (codeOut & BOTTOM) {
+                x = x1 + (x2 - x1) * (yMin - y1) / (y2 - y1);
+                y = yMin;
+            }
+            else if (codeOut & RIGHT) {
+                y = y1 + (y2 - y1) * (xMax - x1) / (x2 - x1);
+                x = xMax;
+            }
+            else if (codeOut & LEFT) {
+                y = y1 + (y2 - y1) * (xMin - x1) / (x2 - x1);
+                x = xMin;
+            }
+
+            if (codeOut == code1) {
+                x1 = x;
+                y1 = y;
+                code1 = computeCode(x1, y1);
+            }
+            else {
+                x2 = x;
+                y2 = y;
+                code2 = computeCode(x2, y2);
+            }
+        }
+    }
+
+    if (accept) {
+        line.x1 = x1;
+        line.y1 = y1;
+        line.x2 = x2;
+        line.y2 = y2;
+        line.clipped = true;
+    }
+    else {
+        line.clipped = false;
+    }
+}
+
+void display() {
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    // 绘制裁剪窗口
+    if (windowDefined) {
+        glColor3f(0.0, 1.0, 0.0); // 绿色窗口
+        glBegin(GL_LINE_LOOP);
+        glVertex2i(xMin, yMin);
+        glVertex2i(xMax, yMin);
+        glVertex2i(xMax, yMax);
+        glVertex2i(xMin, yMax);
+        glEnd();
+    }
+
+    // 绘制所有线段
+    for (const auto& line : lines) {
+        if (windowDefined && line.clipped) {
+            glColor3f(1.0, 0.0, 0.0); // 红色表示裁剪后的线段
+        }
+        else {
+            glColor3f(1.0, 1.0, 1.0); // 白色表示原始线段
+        }
+
+        glBegin(GL_LINES);
+        glVertex2i(line.x1, line.y1);
+        glVertex2i(line.x2, line.y2);
+        glEnd();
+    }
+
+    // 显示当前输入状态
+    glColor3f(1.0, 1.0, 1.0);
+    glRasterPos2i(10, 20);
+    string status;
+    switch (currentState) {
+    case IDLE: status = "状态: 空闲 (按w输入窗口, l输入线段, c裁剪, r重置)"; break;
+    case INPUT_WINDOW: status = "状态: 输入窗口中 (格式: xMin yMin xMax yMax)"; break;
+    case INPUT_LINE_START: status = "状态: 输入线段起点 (格式: x1 y1)"; break;
+    case INPUT_LINE_END: status = "状态: 输入线段终点 (格式: x2 y2)"; break;
+    }
+    for (char c : status) {
+        glutBitmapCharacter(GLUT_BITMAP_9_BY_15, c);
+    }
+
+    // 显示当前输入缓存
+    if (currentState != IDLE) {
+        glRasterPos2i(10, 40);
+        string prompt = "输入: " + inputBuffer;
+        for (char c : prompt) {
+            glutBitmapCharacter(GLUT_BITMAP_9_BY_15, c);
+        }
+    }
+
+    glutSwapBuffers();
+}
+
+void processInput() {
+    istringstream iss(inputBuffer);
+
+    switch (currentState) {
+    case INPUT_WINDOW: {
+        if (iss >> xMin >> yMin >> xMax >> yMax) {
+            windowDefined = true;
+            currentState = IDLE;
+        }
+        break;
+    }
+    case INPUT_LINE_START: {
+        if (iss >> currentLine.x1 >> currentLine.y1) {
+            currentState = INPUT_LINE_END;
+        }
+        break;
+    }
+    case INPUT_LINE_END: {
+        if (iss >> currentLine.x2 >> currentLine.y2) {
+            lines.push_back(currentLine);
+            currentState = IDLE;
+        }
+        break;
+    }
+    default: break;
+    }
+
+    inputBuffer.clear();
+    glutPostRedisplay();
+}
+
+void keyboard(unsigned char key, int x, int y) {
+    if (currentState != IDLE && key == 13) { // 回车键确认输入
+        processInput();
+        return;
+    }
+
+    if (currentState != IDLE && key == 27) { // ESC键取消输入
+        currentState = IDLE;
+        inputBuffer.clear();
+        glutPostRedisplay();
+        return;
+    }
+
+    switch (key) {
+    case 'w': // 定义裁剪窗口
+        if (currentState == IDLE) {
+            currentState = INPUT_WINDOW;
+            inputBuffer.clear();
+        }
+        break;
+
+    case 'l': // 输入线段
+        if (currentState == IDLE) {
+            currentState = INPUT_LINE_START;
+            inputBuffer.clear();
+        }
+        break;
+
+    case 'c': // 裁剪所有线段
+        if (currentState == IDLE && windowDefined) {
+            for (auto& line : lines) {
+                cohenSutherlandClip(line);
+            }
+        }
+        break;
+
+    case 'r': // 重置
+        if (currentState == IDLE) {
+            lines.clear();
+            windowDefined = false;
+        }
+        break;
+
+    case 27: // ESC键退出
+        exit(0);
+        break;
+
+    default:
+        // 处理数字输入
+        if (currentState != IDLE && (isdigit(key) || key == ' ' || key == '-')) {
+            inputBuffer += key;
+        }
+        break;
+    }
+
+    glutPostRedisplay();
+}
+
+void init() {
+    glClearColor(0.0, 0.0, 0.0, 0.0);
+    glMatrixMode(GL_PROJECTION);
+    gluOrtho2D(0, glutGet(GLUT_WINDOW_WIDTH), 0, glutGet(GLUT_WINDOW_HEIGHT));
+}
+
+int main(int argc, char** argv) {
+    glutInit(&argc, argv);
+    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
+    glutInitWindowSize(800, 600);
+    glutCreateWindow("Cohen-Sutherland直线裁剪算法");
+
+    init();
+
+    cout << "使用说明:\n";
+    cout << "1. 按'w'键开始输入裁剪窗口坐标(格式: xMin yMin xMax yMax)\n";
+    cout << "2. 按'l'键开始输入线段(先起点后终点)\n";
+    cout << "3. 按'c'键裁剪所有线段\n";
+    cout << "4. 按'r'键重置\n";
+    cout << "5. 按ESC键退出\n";
+    cout << " - 按回车确认输入\n";
+    cout << " - 按ESC取消输入\n";
+
+    glutDisplayFunc(display);
+    glutKeyboardFunc(keyboard);
+    glutMainLoop();
+
+    return 0;
+}
