@@ -1,0 +1,194 @@
+#include <GL/glut.h>
+#include <vector>
+#include <algorithm>
+#include <iostream>
+
+using namespace std;
+
+struct Point {
+    int x, y;
+    Point(int x = 0, int y = 0) : x(x), y(y) {}
+};
+
+vector<Point> polygonVertices;  // 存储多边形顶点
+bool polygonComplete = false;    // 标记多边形是否绘制完成
+bool fillPolygon = false;        // 标记是否填充多边形
+
+// 边结构体，用于扫描线算法
+struct Edge {
+    int yMax;    // 边的最大y值
+    float x;     // 当前x值
+    float slope; // 斜率的倒数(1/m)
+
+    Edge(Point p1, Point p2) {
+        if (p1.y > p2.y) {
+            yMax = p1.y;
+            x = p2.x;
+        }
+        else {
+            yMax = p2.y;
+            x = p1.x;
+        }
+        slope = (p1.x - p2.x) / (float)(p1.y - p2.y);
+    }
+
+    // 用于排序
+    bool operator<(const Edge& other) const {
+        if (x == other.x) {
+            return slope < other.slope;
+        }
+        return x < other.x;
+    }
+};
+
+// 扫描线填充算法
+void scanLineFill() {
+    if (polygonVertices.size() < 3) return;
+
+    // 找到多边形的y最小和最大值
+    int yMin = polygonVertices[0].y;
+    int yMax = polygonVertices[0].y;
+    for (const auto& vertex : polygonVertices) {
+        if (vertex.y < yMin) yMin = vertex.y;
+        if (vertex.y > yMax) yMax = vertex.y;
+    }
+
+    // 创建边表(ET)
+    vector<vector<Edge>> edgeTable(yMax - yMin + 1);
+
+    // 填充边表
+    for (size_t i = 0; i < polygonVertices.size(); ++i) {
+        Point p1 = polygonVertices[i];
+        Point p2 = polygonVertices[(i + 1) % polygonVertices.size()];
+
+        // 忽略水平线
+        if (p1.y == p2.y) continue;
+
+        Edge edge(p1, p2);
+        int yStart = min(p1.y, p2.y);
+        edgeTable[yStart - yMin].push_back(edge);
+    }
+
+    // 活动边表(AET)
+    vector<Edge> activeEdges;
+
+    glColor3f(1.0, 0.0, 0.0); // 设置填充颜色为红色
+    glBegin(GL_LINES);
+
+    for (int y = yMin; y <= yMax; ++y) {
+        // 将新的边加入活动边表
+        if (y - yMin < edgeTable.size()) {
+            for (const auto& edge : edgeTable[y - yMin]) {
+                activeEdges.push_back(edge);
+            }
+        }
+
+        // 删除yMax == y的边
+        activeEdges.erase(
+            remove_if(activeEdges.begin(), activeEdges.end(),
+                [y](const Edge& e) { return e.yMax == y; }),
+            activeEdges.end()
+        );
+
+        // 按x值排序活动边表
+        sort(activeEdges.begin(), activeEdges.end());
+
+        // 填充扫描线
+        for (size_t i = 0; i < activeEdges.size(); i += 2) {
+            if (i + 1 >= activeEdges.size()) break;
+
+            int x1 = (int)activeEdges[i].x;
+            int x2 = (int)activeEdges[i + 1].x;
+
+            glVertex2i(x1, y);
+            glVertex2i(x2, y);
+        }
+
+        // 更新活动边表中的x值
+        for (auto& edge : activeEdges) {
+            edge.x += edge.slope;
+        }
+    }
+
+    glEnd();
+}
+
+void display() {
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    // 绘制多边形边界
+    glColor3f(1.0, 1.0, 1.0); // 白色边界
+    glBegin(GL_LINE_LOOP);
+    for (const auto& vertex : polygonVertices) {
+        glVertex2i(vertex.x, vertex.y);
+    }
+    glEnd();
+
+    // 如果多边形已完成且需要填充，则执行扫描线填充
+    if (polygonComplete && fillPolygon) {
+        scanLineFill();
+    }
+
+    glutSwapBuffers();
+}
+
+void mouse(int button, int state, int x, int y) {
+    if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN && !polygonComplete) {
+        // 将鼠标点击位置添加为多边形顶点
+        polygonVertices.push_back(Point(x, glutGet(GLUT_WINDOW_HEIGHT) - y));
+        glutPostRedisplay();
+    }
+}
+
+void keyboard(unsigned char key, int x, int y) {
+    switch (key) {
+    case 'c': // 完成多边形
+        if (polygonVertices.size() >= 3 && !polygonComplete) {
+            polygonComplete = true;
+        }
+        break;
+    case 'f': // 填充多边形
+        if (polygonComplete) {
+            fillPolygon = true;
+        }
+        break;
+    case 'r': // 重置
+        polygonVertices.clear();
+        polygonComplete = false;
+        fillPolygon = false;
+        break;
+    case 27:  // ESC键退出
+        exit(0);
+        break;
+    }
+    glutPostRedisplay();
+}
+
+void init() {
+    glClearColor(0.0, 0.0, 0.0, 0.0); // 黑色背景
+    glMatrixMode(GL_PROJECTION);
+    gluOrtho2D(0, glutGet(GLUT_WINDOW_WIDTH), 0, glutGet(GLUT_WINDOW_HEIGHT));
+}
+
+int main(int argc, char** argv) {
+    glutInit(&argc, argv);
+    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
+    glutInitWindowSize(800, 600);
+    glutCreateWindow("扫描线填充算法");
+
+    init();
+
+    glutDisplayFunc(display);
+    glutMouseFunc(mouse);
+    glutKeyboardFunc(keyboard);
+
+    cout << "使用说明:\n";
+    cout << "1. 用鼠标左键点击添加多边形顶点\n";
+    cout << "2. 按'c'键完成多边形绘制\n";
+    cout << "3. 按'f'键填充多边形\n";
+    cout << "4. 按'r'键重置\n";
+    cout << "5. 按ESC键退出\n";
+
+    glutMainLoop();
+    return 0;
+}
