@@ -1,0 +1,324 @@
+#include <GL/glut.h>
+#include <iostream>
+#include <vector>
+#include <cmath>
+#include <string>
+
+using namespace std;
+
+// 屏幕尺寸
+const int SCREEN_WIDTH = 800;
+const int SCREEN_HEIGHT = 600;
+
+// 数据点结构
+struct Point {
+    float x, y;
+    Point(float x = 0, float y = 0) : x(x), y(y) {}
+};
+
+// 折线图数据
+vector<Point> dataPoints;  // 数据点
+vector<string> dataLabels; // 数据标签
+vector<bool> showLabels;   // 是否显示标签
+
+// 视图控制
+float zoom = 1.0f;
+float panX = 0.0f, panY = 0.0f;
+bool dragging = false;
+int dragStartX = 0, dragStartY = 0;
+
+// 显示网格和坐标轴
+bool showGrid = true;
+bool showAxes = true;
+bool showPoints = true;
+bool showLines = true;
+bool showPointLabels = true;
+
+// 绘制文本函数
+void drawText(float x, float y, const char* text) {
+    glRasterPos2f(x, y);
+    for (const char* c = text; *c != '\0'; c++) {
+        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_10, *c);
+    }
+}
+
+// 绘制坐标轴和网格
+void drawAxesAndGrid() {
+    if (showAxes) {
+        glColor3f(1.0f, 1.0f, 1.0f);  // 白色坐标轴
+        
+        // X轴
+        glBegin(GL_LINES);
+        glVertex2f(-1.0f, 0.0f);
+        glVertex2f(1.0f, 0.0f);
+        // Y轴
+        glVertex2f(0.0f, -1.0f);
+        glVertex2f(0.0f, 1.0f);
+        glEnd();
+        
+        // 绘制坐标轴箭头
+        glPushMatrix();
+        glTranslatef(1.0f, 0.0f, 0.0f);
+        glRotatef(180.0f, 0.0f, 1.0f, 0.0f);
+        glutSolidCone(0.02, 0.05, 10, 10);
+        glPopMatrix();
+        
+        glPushMatrix();
+        glTranslatef(0.0f, 1.0f, 0.0f);
+        glRotatef(90.0f, 1.0f, 0.0f, 0.0f);
+        glutSolidCone(0.02, 0.05, 10, 10);
+        glPopMatrix();
+        
+        // 绘制坐标轴标签
+        drawText(1.05f, -0.03f, "X");
+        drawText(-0.03f, 1.05f, "Y");
+    }
+    
+    if (showGrid) {
+        glColor3f(0.3f, 0.3f, 0.3f);  // 灰色网格
+        
+        // 水平网格线
+        for (float y = -0.9f; y <= 0.9f; y += 0.1f) {
+            glBegin(GL_LINES);
+            glVertex2f(-1.0f, y);
+            glVertex2f(1.0f, y);
+            glEnd();
+        }
+        
+        // 垂直网格线
+        for (float x = -0.9f; x <= 0.9f; x += 0.1f) {
+            glBegin(GL_LINES);
+            glVertex2f(x, -1.0f);
+            glVertex2f(x, 1.0f);
+            glEnd();
+        }
+    }
+}
+
+// 绘制折线图
+void drawLineGraph() {
+    if (dataPoints.empty()) return;
+    
+    // 应用缩放和平移
+    glPushMatrix();
+    glScalef(zoom, zoom, 1.0f);
+    glTranslatef(panX, panY, 0.0f);
+    
+    // 绘制折线
+    if (showLines && dataPoints.size() > 1) {
+        glColor3f(0.0f, 0.0f, 1.0f);  // 蓝色折线
+        glBegin(GL_LINE_STRIP);
+        for (const auto& p : dataPoints) {
+            glVertex2f(p.x, p.y);
+        }
+        glEnd();
+    }
+    
+    // 绘制数据点
+    if (showPoints) {
+        glColor3f(1.0f, 0.0f, 0.0f);  // 红色数据点
+        glPointSize(5.0f);
+        glBegin(GL_POINTS);
+        for (const auto& p : dataPoints) {
+            glVertex2f(p.x, p.y);
+        }
+        glEnd();
+        glPointSize(1.0f);
+    }
+    
+    // 绘制数据点标签
+    if (showPointLabels) {
+        glColor3f(1.0f, 1.0f, 0.0f);  // 黄色标签
+        for (size_t i = 0; i < dataPoints.size(); i++) {
+            if (showLabels[i]) {
+                string label = dataLabels[i];
+                if (label.empty()) {
+                    label = "(" + to_string(dataPoints[i].x) + ", " + to_string(dataPoints[i].y) + ")";
+                }
+                drawText(dataPoints[i].x + 0.02f, dataPoints[i].y + 0.02f, label.c_str());
+            }
+        }
+    }
+    
+    glPopMatrix();
+}
+
+// 显示帮助信息
+void showHelp() {
+    cout << "\n=== 操作帮助 ===" << endl;
+    cout << "1. 鼠标左键点击添加数据点" << endl;
+    cout << "2. 鼠标右键拖动平移视图" << endl;
+    cout << "3. 滚轮缩放视图" << endl;
+    cout << "4. 键盘按键:" << endl;
+    cout << "   g: 显示/隐藏网格" << endl;
+    cout << "   a: 显示/隐藏坐标轴" << endl;
+    cout << "   p: 显示/隐藏数据点" << endl;
+    cout << "   l: 显示/隐藏折线" << endl;
+    cout << "   t: 显示/隐藏数据标签" << endl;
+    cout << "   r: 重置视图" << endl;
+    cout << "   h: 显示帮助信息" << endl;
+    cout << "   q: 退出程序" << endl;
+}
+
+// 绘制回调函数
+void display() {
+    glClear(GL_COLOR_BUFFER_BIT);
+    
+    drawAxesAndGrid();
+    drawLineGraph();
+    
+    // 显示状态信息
+    glColor3f(1.0f, 1.0f, 1.0f);
+    string status = "数据点: " + to_string(dataPoints.size()) + 
+                   " | 缩放: " + to_string(zoom) + 
+                   " | 平移: (" + to_string(panX) + ", " + to_string(panY) + ")";
+    drawText(-0.95f, 0.95f, status.c_str());
+    
+    glutSwapBuffers();
+}
+
+// 鼠标回调函数
+void mouse(int button, int state, int x, int y) {
+    // 转换坐标
+    float worldX = (float)x / SCREEN_WIDTH * 2.0f - 1.0f;
+    float worldY = 1.0f - (float)y / SCREEN_HEIGHT * 2.0f;
+    
+    // 应用逆变换获取实际世界坐标
+    worldX = (worldX / zoom) - panX;
+    worldY = (worldY / zoom) - panY;
+    
+    if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
+        // 添加数据点
+        dataPoints.push_back(Point(worldX, worldY));
+        dataLabels.push_back("");
+        showLabels.push_back(true);
+        cout << "添加数据点: (" << worldX << ", " << worldY << ")" << endl;
+        glutPostRedisplay();
+    } else if (button == GLUT_RIGHT_BUTTON) {
+        if (state == GLUT_DOWN) {
+            dragging = true;
+            dragStartX = x;
+            dragStartY = y;
+        } else {
+            dragging = false;
+        }
+    } else if (button == 3) {  // 滚轮上滚
+        zoom *= 1.1f;
+        glutPostRedisplay();
+    } else if (button == 4) {  // 滚轮下滚
+        zoom /= 1.1f;
+        glutPostRedisplay();
+    }
+}
+
+// 鼠标拖动回调函数
+void motion(int x, int y) {
+    if (dragging) {
+        int dx = x - dragStartX;
+        int dy = y - dragStartY;
+        
+        // 转换为世界坐标
+        panX += dx * 0.01f / zoom;
+        panY -= dy * 0.01f / zoom;
+        
+        dragStartX = x;
+        dragStartY = y;
+        
+        glutPostRedisplay();
+    }
+}
+
+// 键盘回调函数
+void keyboard(unsigned char key, int x, int y) {
+    switch (key) {
+        case 'g':
+        case 'G':
+            showGrid = !showGrid;
+            cout << (showGrid ? "显示" : "隐藏") << "网格" << endl;
+            glutPostRedisplay();
+            break;
+        case 'a':
+        case 'A':
+            showAxes = !showAxes;
+            cout << (showAxes ? "显示" : "隐藏") << "坐标轴" << endl;
+            glutPostRedisplay();
+            break;
+        case 'p':
+        case 'P':
+            showPoints = !showPoints;
+            cout << (showPoints ? "显示" : "隐藏") << "数据点" << endl;
+            glutPostRedisplay();
+            break;
+        case 'l':
+        case 'L':
+            showLines = !showLines;
+            cout << (showLines ? "显示" : "隐藏") << "折线" << endl;
+            glutPostRedisplay();
+            break;
+        case 't':
+        case 'T':
+            showPointLabels = !showPointLabels;
+            cout << (showPointLabels ? "显示" : "隐藏") << "数据标签" << endl;
+            glutPostRedisplay();
+            break;
+        case 'r':
+        case 'R':
+            zoom = 1.0f;
+            panX = 0.0f;
+            panY = 0.0f;
+            cout << "重置视图" << endl;
+            glutPostRedisplay();
+            break;
+        case 'h':
+        case 'H':
+            showHelp();
+            break;
+        case 'q':
+        case 'Q':
+        case 27:  // ESC键
+            exit(0);
+            break;
+    }
+}
+
+// 窗口大小改变回调函数
+void reshape(int width, int height) {
+    if (height == 0) height = 1;
+    glViewport(0, 0, width, height);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    gluOrtho2D(-1.0, 1.0, -1.0, 1.0);
+    glMatrixMode(GL_MODELVIEW);
+}
+
+// 初始化OpenGL
+void init() {
+    glClearColor(0.1f, 0.1f, 0.1f, 1.0f);  // 设置背景色为深灰色
+    glEnable(GL_POINT_SMOOTH);
+    glEnable(GL_LINE_SMOOTH);
+    glHint(GL_POINT_SMOOTH_HINT, GL_NICEST);
+    glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+}
+
+int main(int argc, char** argv) {
+    cout << "GLUT折线图绘制程序" << endl;
+    showHelp();
+    
+    glutInit(&argc, argv);
+    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
+    glutInitWindowSize(SCREEN_WIDTH, SCREEN_HEIGHT);
+    glutCreateWindow("GLUT折线图");
+    
+    init();
+    
+    glutDisplayFunc(display);
+    glutReshapeFunc(reshape);
+    glutMouseFunc(mouse);
+    glutMotionFunc(motion);
+    glutKeyboardFunc(keyboard);
+    
+    glutMainLoop();
+    return 0;
+}    
